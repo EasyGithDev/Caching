@@ -5,9 +5,9 @@ use Caching\Cache;
 require __DIR__ . '/../classes/autoload.php';
 
 $lifeTime = 60;
-$key = 'MyKey';
+$key = 'MyKey1';
 
-$content = (new Cache)->store($key, $lifeTime, function () {
+$content = Cache::getInstance()->storeCache($key, $lifeTime, function () {
     return 'Groovy baby !!!!!!!!!!!!!!!!!';
 });
 

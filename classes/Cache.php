@@ -6,9 +6,47 @@ class Cache
 {
     const CACHE_DIR = 'cache';
 
+    private static $_instance = null;
     protected $dir = self::CACHE_DIR;
 
-    function put(string $key, string $content, int $mtime): bool
+    private function __construct()
+    {
+    }
+
+    public static function getInstance()
+    {
+        if (is_null(self::$_instance)) {
+            self::$_instance = new self();
+        }
+
+        return self::$_instance;
+    }
+
+    public static function __callStatic($name, $arguments)
+    {
+        $cache = Cache::getInstance();
+
+        switch ($name) {
+            case 'put':
+                [$key, $content, $mtime] = $arguments;
+                return $cache->putCache($key, $content, $mtime);
+                break;
+            case 'get':
+                $key = $arguments[0];
+                return $cache->getCache($key);
+                break;
+            case 'store':
+                [$key, $lifeTime, $callback] = $arguments;
+                return $cache->storeCache($key, $lifeTime, $callback);
+                break;
+            case 'forget':
+                $key = $arguments[0];
+                return $cache->forgetCache($key);
+                break;
+        }
+    }
+
+    public function putCache(string $key, string $content, int $mtime): bool
     {
         $filename = $this->getFilepath($key);
         $res = file_put_contents($filename, $content, LOCK_EX);
@@ -16,12 +54,12 @@ class Cache
         return $res;
     }
 
-    function get(string $key): string
+    public function getCache(string $key): string
     {
         return file_get_contents($this->getFilepath($key), LOCK_SH);
     }
 
-    function store(string $key, int $lifeTime, callable $callback): mixed
+    public function storeCache(string $key, int $lifeTime, callable $callback): mixed
     {
         $now = time();
         $filename = $this->getFilepath($key);
@@ -31,19 +69,23 @@ class Cache
         if ($now >= $mtime) {
             $content = $callback();
             $mtime = $now + $lifeTime;
-            $this->put($key, $this->serialize($content), $mtime);
+            $this->putCache($key, $this->serialize($content), $mtime);
         } else {
-            $content = $this->unserialize($this->get($key));
+            $content = $this->unserialize($this->getCache($key));
         }
         return $content;
     }
 
-    function forget(string $key): bool
+    public function forgetCache(string $key): bool
     {
-        return unlink($this->getFilepath($key));
+        $filename = $this->getFilepath($key);
+        if (!file_exists($filename)) {
+            return false;
+        }
+        return unlink($filename);
     }
 
-    function getFilepath(string $key): string|false
+    protected function getFilepath(string $key): string|false
     {
         $path = realpath($this->dir);
         return (!$path) ?: ($path . '/' . $this->hash($key));

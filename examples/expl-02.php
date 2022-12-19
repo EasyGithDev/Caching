@@ -17,9 +17,9 @@ try {
 }
 
 $lifeTime = 60;
-$key = 'MyKey';
+$key = 'MyKey2';
 
-$content = (new Cache)->store($key, $lifeTime, function () use ($dbh) {
+$content = Cache::getInstance()->storeCache($key, $lifeTime, function () use ($dbh) {
     $sql = 'SELECT * from authors';
     return $dbh->query($sql)->fetchAll();
 });

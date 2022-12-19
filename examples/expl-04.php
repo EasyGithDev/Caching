@@ -17,14 +17,7 @@ try {
 }
 
 $lifeTime = 60;
-$key = 'MyKey3';
-$dir = __DIR__ . '/../caching';
-
-if(!file_exists($dir)) {
-    mkdir($dir);
-}
-
-Cache::getInstance()->setDir($dir);
+$key = 'MyKey4';
 
 $content = Cache::store($key, $lifeTime, function () use ($dbh) {
     $sql = 'SELECT * from authors';
@@ -32,4 +25,3 @@ $content = Cache::store($key, $lifeTime, function () use ($dbh) {
 });
 
 var_dump($content);
-
