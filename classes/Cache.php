@@ -7,10 +7,13 @@ class Cache
     const CACHE_DIR = 'cache';
 
     private static $_instance = null;
-    protected $dir = self::CACHE_DIR;
+    protected $dir;
+    protected $debug;
 
     private function __construct()
     {
+        $this->dir = self::CACHE_DIR;
+        $this->debug = null;
     }
 
     public static function getInstance()
@@ -95,14 +98,19 @@ class Cache
         $filename = $this->getFilepath($key);
         $mtime = (file_exists($filename)) ? filemtime($filename) : 0;
 
+        $msg = sprintf("now:%d >= mtime:%d (%b)\n", $now, $mtime, ($now >= $mtime));
+        $this->debug?->msg($msg);
+
         $content = '';
         if ($now >= $mtime) {
+            $this->debug?->msg("PUT\n");
             $content = $callback();
             $mtime = $now + $lifeTime;
             if (!$this->putCache($key, $this->serialize($content), $mtime)) {
                 throw new CacheIoException("Unable to write cache : $filename");
             }
         } else {
+            $this->debug?->msg("GET\n");
             if (($serialized = $this->getCache($key)) === false) {
                 throw new CacheIoException("Unable to read cache : $filename");
             }
@@ -164,6 +172,18 @@ class Cache
     public function setDir(string $dir): Cache
     {
         $this->dir = $dir;
+
+        return $this;
+    }
+
+    /**
+     * Set the value of debug
+     *
+     * @return  self
+     */
+    public function setDebug(Debug $debug)
+    {
+        $this->debug = $debug;
 
         return $this;
     }
