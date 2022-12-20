@@ -6,11 +6,11 @@ class Cache
 {
     const CACHE_DIR = 'cache';
 
-    private static $_instance = null;
+    protected static $_instance = null;
     protected $dir;
     protected $debug;
 
-    private function __construct()
+    protected function __construct()
     {
         $this->dir = self::CACHE_DIR;
         $this->debug = null;
@@ -18,16 +18,16 @@ class Cache
 
     public static function getInstance()
     {
-        if (is_null(self::$_instance)) {
-            self::$_instance = new self();
+        if (is_null(static::$_instance)) {
+            static::$_instance = new self();
         }
 
-        return self::$_instance;
+        return static::$_instance;
     }
 
     public static function __callStatic($name, $arguments)
     {
-        $cache = Cache::getInstance();
+        $cache = static::getInstance();
 
         switch ($name) {
             case 'put':
