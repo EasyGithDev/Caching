@@ -46,21 +46,51 @@ class Cache
         }
     }
 
-    public function putCache(string $key, string $content, int $mtime): bool
+    public function putCache(string $key, string $content, int $mtime): int|false
     {
+        if (empty($key)) {
+            throw new ArgumentException("Key can not be empty");
+        }
+
+        if (empty($content)) {
+            throw new ArgumentException("Content can not be empty");
+        }
+
+        if ($mtime < 1) {
+            throw new ArgumentException("Mtime must be greater or equal to 1");
+        }
+
         $filename = $this->getFilepath($key);
         $res = file_put_contents($filename, $content, LOCK_EX);
-        touch($filename, $mtime);
+        if (!touch($filename, $mtime)) {
+            return false;
+        }
         return $res;
     }
 
-    public function getCache(string $key): string
+    public function getCache(string $key): string|false
     {
+        if (empty($key)) {
+            throw new ArgumentException("Key can not be empty");
+        }
+
         return file_get_contents($this->getFilepath($key), LOCK_SH);
     }
 
     public function storeCache(string $key, int $lifeTime, callable $callback): mixed
     {
+        if (empty($key)) {
+            throw new ArgumentException("Key can not be empty");
+        }
+
+        if ($lifeTime < 1) {
+            throw new ArgumentException("Lifetime must be greater or equal to 1");
+        }
+
+        if (is_null($callback)) {
+            throw new ArgumentException("Callback can not be null");
+        }
+
         $now = time();
         $filename = $this->getFilepath($key);
         $mtime = (file_exists($filename)) ? filemtime($filename) : 0;
@@ -69,15 +99,24 @@ class Cache
         if ($now >= $mtime) {
             $content = $callback();
             $mtime = $now + $lifeTime;
-            $this->putCache($key, $this->serialize($content), $mtime);
+            if (!$this->putCache($key, $this->serialize($content), $mtime)) {
+                throw new CacheIoException("Unable to write cache : $filename");
+            }
         } else {
-            $content = $this->unserialize($this->getCache($key));
+            if (($serialized = $this->getCache($key)) === false) {
+                throw new CacheIoException("Unable to read cache : $filename");
+            }
+            $content = $this->unserialize($serialized);
         }
         return $content;
     }
 
     public function forgetCache(string $key): bool
     {
+        if (empty($key)) {
+            throw new ArgumentException("Key can not be empty");
+        }
+
         $filename = $this->getFilepath($key);
         if (!file_exists($filename)) {
             return false;
@@ -85,10 +124,13 @@ class Cache
         return unlink($filename);
     }
 
-    protected function getFilepath(string $key): string|false
+    protected function getFilepath(string $key): string
     {
         $path = realpath($this->dir);
-        return (!$path) ?: ($path . '/' . $this->hash($key));
+        if (!is_dir($path)) {
+            throw new CacheDirException($this->dir);
+        }
+        return $path . DIRECTORY_SEPARATOR . $this->hash($key);
     }
 
     protected function hash(string $key): string
